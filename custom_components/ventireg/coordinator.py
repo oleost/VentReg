@@ -8,9 +8,9 @@ from typing import Any
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.event import async_call_later, async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
@@ -58,6 +58,11 @@ class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_set: float | None = None
         self._paused_since = None
         self._cancel_notify = None
+
+        # Lytter på kilde-entitetene (utesensor + climate)
+        self._unsub_listener = None
+        self._outdoor_entity: str | None = None
+        self._climate_entity: str | None = None
 
         self._store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
         self.device_info = DeviceInfo(
@@ -110,8 +115,40 @@ class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             }
         )
 
+    def async_setup_source_listener(self) -> None:
+        """Regn på nytt så snart utesensoren/climate endrer seg (ikke bare hvert 15. min).
+
+        Fikser bl.a. at «Beregnet settpunkt» blir stående unknown hvis utesensoren ikke
+        er klar ved oppstart, og gir raskere respons + raskere auto-pause.
+        """
+        cfg = self._config()
+        self._outdoor_entity = cfg[CONF_OUTDOOR_SENSOR]
+        self._climate_entity = cfg[CONF_CLIMATE_ENTITY]
+        self._unsub_listener = async_track_state_change_event(
+            self.hass,
+            [self._outdoor_entity, self._climate_entity],
+            self._async_source_changed,
+        )
+
+    @callback
+    def _async_source_changed(self, event: Event) -> None:
+        new_state = event.data.get("new_state")
+        if new_state is None:
+            return
+        # For climate: reager kun på endring i settpunkt (temperature),
+        # ikke på støy som målt temperatur (current_temperature) o.l.
+        if event.data["entity_id"] == self._climate_entity:
+            old_state = event.data.get("old_state")
+            old_temp = old_state.attributes.get("temperature") if old_state else None
+            if old_temp == new_state.attributes.get("temperature"):
+                return
+        self.hass.async_create_task(self.async_request_refresh())
+
     def async_shutdown_extra(self) -> None:
         self._cancel_pending_notify()
+        if self._unsub_listener is not None:
+            self._unsub_listener()
+            self._unsub_listener = None
 
     # ------------------------------------------------------- reguleringssløyfe
     async def _async_update_data(self) -> dict[str, Any]:
@@ -155,10 +192,12 @@ class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             result["status"] = self.status
             return result
 
-        # Ingen ekstern endring → skriv kurveverdien og husk den
-        await self._async_write_setpoint(cfg[CONF_CLIMATE_ENTITY], target)
-        self._last_set = target
-        await self._save()
+        # Ingen ekstern endring → skriv kurveverdien, men kun når den faktisk er
+        # endret (unngår unødvendige skrivinger når vi lytter på kilde-endringer).
+        if self._last_set is None or abs(target - self._last_set) >= 0.01:
+            await self._async_write_setpoint(cfg[CONF_CLIMATE_ENTITY], target)
+            self._last_set = target
+            await self._save()
         return result
 
     async def _async_write_setpoint(self, climate_entity: str, target: float) -> None:

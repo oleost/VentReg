@@ -30,12 +30,20 @@ switchen er **på**:
 3. Avvik ≥ toleranse (default 0,5 °C, som er Flexit sitt reguleringssteg) →
    **noen andre har endret settpunktet** → gå i **auto-pause**: slå switch av,
    status = «Auto pauset», skriv tidspunkt, skriv **ingenting** til aggregatet.
-4. Ellers → regn kurveverdi ut fra utetemp, rund til nærmeste 0,5 °C, skriv til
-   climate via `climate.set_temperature`, lagre verdien som `_last_set`.
+4. Ellers → regn kurveverdi ut fra utetemp, rund til nærmeste 0,5 °C, og skriv til climate via
+   `climate.set_temperature` **kun når kurveverdien faktisk er endret** (`abs(target - _last_set)
+   >= 0.01`), lagre verdien som `_last_set`. Unngår unødvendige skrivinger.
 
-Vi **lytter ikke løpende** på climate-entiteten. Konsekvens: en ekstern endring oppdages
-først ved neste tikk (opptil 15 min forsinkelse). Dette er et bevisst, akseptert kompromiss
-— det garanterer at vi aldri overskriver en manuell endring, fordi vi alltid sjekker før vi skriver.
+I tillegg til 15-minutterstikket **lytter** koordinatoren på utesensoren og climate-entiteten
+(`async_setup_source_listener` → `async_track_state_change_event`) og kaller `async_request_refresh`
+ved endring. Dette gjør at:
+- «Beregnet settpunkt» ikke blir stående `unknown` hvis utesensoren er `unavailable` ved oppstart
+  (regnes på nytt så snart sensoren får en verdi).
+- reguleringen og **auto-pause** reagerer raskt, ikke bare hvert 15. min.
+
+For climate filtreres det på endring i `temperature`-attributtet (settpunkt), så støy som
+`current_temperature` ikke trigger unødvendige beregninger. Vi sjekker fortsatt alltid før vi
+skriver, så vi overskriver aldri en manuell endring. Lytteren ryddes i `async_shutdown_extra`.
 
 ## Pause og reaktivering
 
