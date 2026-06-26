@@ -135,12 +135,16 @@ title: Utekompensert kurve
 | `type` | ja | Må være `custom:ventireg-card`. |
 | `entity` | ja | Beregnet-settpunkt-sensoren (den med `curve_points`-attributtet). |
 | `title` | nei | Overskrift på kortet. Default «Utekompensert kurve». |
+| `min_outdoor` | nei | Fast venstre kant på X-aksen (°C). Default ca. -25. |
+| `max_outdoor` | nei | Fast høyre kant på X-aksen (°C). Default ca. 30. |
+| `x_step` | nei | Snapping på utetemperatur ved dragging (grader). Default 1. |
 
 ### Bruk
 
-- **Dra hvert punkt opp/ned** for å endre tilluftstemperaturen ved den utetemperaturen.
-  (Utetemperaturen/x-aksen er låst per punkt — du justerer kun tilluften.)
-- Verdien snappes til 0,5 °C, og lagres **når du slipper** via `ventireg.set_curve`.
+- **Dra hvert punkt fritt** — venstre/høyre endrer utetemperatur, opp/ned endrer tilluft.
+- Et punkt kan ikke krysse naboene sine (kurven holder seg i stigende rekkefølge). Y snappes til
+  0,5 °C, X til `x_step` (default 1°). Mens du drar vises punktets `ute° / tilluft°`.
+- Endringen lagres **når du slipper** via `ventireg.set_curve`.
 - Den **stiplede linja** viser nåværende utetemperatur, og **prikken** viser gjeldende settpunkt
   («ARB SP»).
 
@@ -211,8 +215,8 @@ er på. Se loggen for «VentiReg»-meldinger.
 
 - `_last_set` (referansen for pause-deteksjon) holdes i minne og lagres til disk, men en ekstern
   endring gjort *mens HA var nede* oppdages ikke før neste normale syklus.
-- Kortet drar punktene **vertikalt** (utetemp er låst per punkt). Å flytte sidelengs eller legge
-  til/fjerne punkter i grafen er ikke støttet ennå (bruk tekstfeltet under Konfigurer for det).
+- Kortet lar deg dra punktene **fritt** (ute + tilluft), men kan ikke **legge til/fjerne** punkter
+  i grafen ennå — bruk tekstfeltet under Konfigurer for å endre antall punkter.
 - Interpolasjonen er lineær og clamper utenfor ytterpunktene (ekstrapolerer ikke).
 
 Se [CLAUDE.md](CLAUDE.md) for arkitektur og designvalg.

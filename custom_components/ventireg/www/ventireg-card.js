@@ -2,13 +2,16 @@
  * VentiReg-kort — grafisk visning og redigering av tilluftskurven.
  *
  * Ren JavaScript (ingen byggesteg). Leser kurvepunkter fra en VentiReg-sensor
- * sine attributter, lar deg dra hvert punkt opp/ned, og lagrer ved å kalle
- * tjenesten ventireg.set_curve.
+ * sine attributter, lar deg dra hvert punkt fritt (venstre/høyre + opp/ned), og
+ * lagrer ved å kalle tjenesten ventireg.set_curve.
  *
  * Dashboard-konfig:
  *   type: custom:ventireg-card
  *   entity: sensor.ventireg_beregnet_settpunkt   # din faktiske id (avhenger av HA-språk)
  *   title: Utekompensert kurve     # valgfritt
+ *   min_outdoor: -25               # valgfritt, fast venstre kant på X-aksen
+ *   max_outdoor: 30                # valgfritt, fast høyre kant på X-aksen
+ *   x_step: 1                      # valgfritt, snapping på utetemperatur (grader)
  */
 
 const SVGNS = "http://www.w3.org/2000/svg";
@@ -23,6 +26,8 @@ const PLOT = {
   top: PAD.top,
   bottom: VB_H - PAD.bottom,
 };
+const Y_SNAP = 0.5; // Flexit-steg
+const X_TICK = 5; // gradering på X-aksen
 
 class VentiRegCard extends HTMLElement {
   setConfig(config) {
@@ -30,9 +35,11 @@ class VentiRegCard extends HTMLElement {
       throw new Error("Du må sette 'entity' (en VentiReg-sensor med kurvepunkter).");
     }
     this._config = config;
+    this._xStep = Number(config.x_step) > 0 ? Number(config.x_step) : 1;
     this._points = null; // [[ute, tilluft], ...]
     this._dragIndex = null;
-    this._yRange = null; // {min, max} fastsettes ved bygging
+    this._xRange = null; // {min, max} — fast X-akse
+    this._yRange = null; // {min, max}
     this._built = false;
   }
 
@@ -63,6 +70,8 @@ class VentiRegCard extends HTMLElement {
       this._points = next;
       if (!this._built || countChanged) {
         this._build();
+      } else {
+        this._recomputeRanges();
       }
     }
     this._updateGeometry();
@@ -72,26 +81,22 @@ class VentiRegCard extends HTMLElement {
     return 6;
   }
 
-  // ---------------------------------------------------------------- koordinater
-  _xToPx(x) {
+  // ---------------------------------------------------------------- områder
+  _recomputeRanges() {
+    this._xRange = this._computeXRange();
+    this._yRange = this._computeYRange();
+  }
+
+  _computeXRange() {
     const xs = this._points.map((p) => p[0]);
-    const xMin = Math.min(...xs);
-    const xMax = Math.max(...xs);
-    const span = xMax - xMin || 1;
-    return PLOT.left + ((x - xMin) / span) * (PLOT.right - PLOT.left);
-  }
-
-  _yToPx(y) {
-    const { min, max } = this._yRange;
-    const span = max - min || 1;
-    return PLOT.bottom - ((y - min) / span) * (PLOT.bottom - PLOT.top);
-  }
-
-  _pxToY(py) {
-    const { min, max } = this._yRange;
-    const span = max - min || 1;
-    const y = min + ((PLOT.bottom - py) / (PLOT.bottom - PLOT.top)) * span;
-    return Math.round(y * 2) / 2; // snap til 0,5
+    const cfgMin = this._config.min_outdoor;
+    const cfgMax = this._config.max_outdoor;
+    let min =
+      cfgMin !== undefined ? Number(cfgMin) : Math.min(-25, Math.floor(Math.min(...xs)) - 5);
+    let max =
+      cfgMax !== undefined ? Number(cfgMax) : Math.max(30, Math.ceil(Math.max(...xs)) + 5);
+    if (max - min < 10) max = min + 10;
+    return { min, max };
   }
 
   _computeYRange() {
@@ -106,9 +111,35 @@ class VentiRegCard extends HTMLElement {
     return { min, max };
   }
 
+  // ---------------------------------------------------------------- koordinater
+  _xToPx(x) {
+    const { min, max } = this._xRange;
+    return PLOT.left + ((x - min) / (max - min || 1)) * (PLOT.right - PLOT.left);
+  }
+
+  _pxToX(px) {
+    const { min, max } = this._xRange;
+    return min + ((px - PLOT.left) / (PLOT.right - PLOT.left)) * (max - min || 1);
+  }
+
+  _yToPx(y) {
+    const { min, max } = this._yRange;
+    return PLOT.bottom - ((y - min) / (max - min || 1)) * (PLOT.bottom - PLOT.top);
+  }
+
+  _pxToY(py) {
+    const { min, max } = this._yRange;
+    const y = min + ((PLOT.bottom - py) / (PLOT.bottom - PLOT.top)) * (max - min || 1);
+    return Math.round(y / Y_SNAP) * Y_SNAP;
+  }
+
+  _snapX(x) {
+    return Math.round(x / this._xStep) * this._xStep;
+  }
+
   // ---------------------------------------------------------------- bygging
   _build() {
-    this._yRange = this._computeYRange();
+    this._recomputeRanges();
 
     const title = this._config.title || "Utekompensert kurve";
     this.innerHTML = `
@@ -140,7 +171,7 @@ class VentiRegCard extends HTMLElement {
           <div class="vr-chip">Ute<b class="vr-out">–</b></div>
           <div class="vr-chip">Settpunkt<b class="vr-set">–</b></div>
         </div>
-        <div class="vr-hint">Dra hvert punkt opp/ned for å justere kurven</div>
+        <div class="vr-hint">Dra punktene fritt — venstre/høyre (ute) og opp/ned (tilluft)</div>
       </ha-card>
     `;
 
@@ -171,7 +202,7 @@ class VentiRegCard extends HTMLElement {
     });
     yTitle.textContent = "Tilluft (°C)";
 
-    // Lag-rekkefølge: rutenett, fyll, linje, markør, punkter
+    // Lag-rekkefølge: rutenett, fyll, linje, markør, punkter, dra-etikett
     this._gridG = this._mk(svg, "g");
     this._areaPath = this._mk(svg, "path", {
       fill: "var(--warning-color,#ff9800)",
@@ -207,6 +238,15 @@ class VentiRegCard extends HTMLElement {
       return c;
     });
 
+    // Verdivisning som dukker opp mens man drar
+    this._dragLabel = this._mk(svg, "text", {
+      "text-anchor": "middle",
+      "font-size": "22",
+      "font-weight": "600",
+      fill: "var(--primary-text-color,#222)",
+    });
+    this._dragLabel.style.display = "none";
+
     svg.addEventListener("pointermove", (ev) => this._onMove(ev));
     svg.addEventListener("pointerup", (ev) => this._onUp(ev));
     svg.addEventListener("pointercancel", (ev) => this._onUp(ev));
@@ -225,11 +265,11 @@ class VentiRegCard extends HTMLElement {
   _updateGeometry() {
     if (!this._built) return;
 
-    // Rutenett + akseetiketter (bygges på nytt; få elementer)
+    // Rutenett + akseetiketter
     this._gridG.innerHTML = "";
-    const { min, max } = this._yRange;
-    for (let y = min; y <= max; y++) {
-      if ((max - min > 12) && y % 2 !== 0) continue;
+    const { min: yMin, max: yMax } = this._yRange;
+    for (let y = yMin; y <= yMax; y++) {
+      if (yMax - yMin > 12 && y % 2 !== 0) continue;
       const py = this._yToPx(y);
       this._mk(this._gridG, "line", {
         x1: PLOT.left, y1: py, x2: PLOT.right, y2: py,
@@ -241,8 +281,15 @@ class VentiRegCard extends HTMLElement {
       });
       t.textContent = `${y}°`;
     }
-    for (const [x] of this._points) {
+    // Faste vertikale gradlinjer på X-aksen
+    const { min: xMin, max: xMax } = this._xRange;
+    const startX = Math.ceil(xMin / X_TICK) * X_TICK;
+    for (let x = startX; x <= xMax; x += X_TICK) {
       const px = this._xToPx(x);
+      this._mk(this._gridG, "line", {
+        x1: px, y1: PLOT.top, x2: px, y2: PLOT.bottom,
+        stroke: "var(--divider-color,#e0e0e0)", "stroke-width": "1",
+      });
       const t = this._mk(this._gridG, "text", {
         x: px, y: PLOT.bottom + 28, "text-anchor": "middle",
         "font-size": "20", fill: "var(--secondary-text-color,#888)",
@@ -298,8 +345,7 @@ class VentiRegCard extends HTMLElement {
   }
 
   _clampX(x) {
-    const xs = this._points.map((p) => p[0]);
-    const cx = Math.max(Math.min(x, Math.max(...xs)), Math.min(...xs));
+    const cx = Math.max(Math.min(x, this._xRange.max), this._xRange.min);
     return this._xToPx(cx);
   }
 
@@ -316,6 +362,11 @@ class VentiRegCard extends HTMLElement {
   }
 
   // ---------------------------------------------------------------- dra
+  _svgX(ev) {
+    const rect = this._svg.getBoundingClientRect();
+    return ((ev.clientX - rect.left) / rect.width) * VB_W;
+  }
+
   _svgY(ev) {
     const rect = this._svg.getBoundingClientRect();
     return ((ev.clientY - rect.top) / rect.height) * VB_H;
@@ -326,16 +377,35 @@ class VentiRegCard extends HTMLElement {
     this._dragIndex = i;
     this._svg.setPointerCapture(ev.pointerId);
     this._circles[i].setAttribute("r", "11");
+    this._dragLabel.style.display = "";
   }
 
   _onMove(ev) {
     if (this._dragIndex === null) return;
     ev.preventDefault();
-    const { min, max } = this._yRange;
+    const i = this._dragIndex;
+    const n = this._points.length;
+
+    // Y: klem til området, snap til 0,5
     let y = this._pxToY(this._svgY(ev));
-    y = Math.max(min, Math.min(max, y));
-    this._points[this._dragIndex][1] = y;
+    y = Math.max(this._yRange.min, Math.min(this._yRange.max, y));
+
+    // X: snap til x_step, klem mellom naboene (bevarer rekkefølgen)
+    let x = this._snapX(this._pxToX(this._svgX(ev)));
+    const gap = this._xStep;
+    const leftBound = i > 0 ? this._points[i - 1][0] + gap : this._xRange.min;
+    const rightBound = i < n - 1 ? this._points[i + 1][0] - gap : this._xRange.max;
+    x = Math.max(leftBound, Math.min(rightBound, x));
+
+    this._points[i] = [x, y];
     this._updateGeometry();
+
+    // Verdivisning over punktet
+    const px = this._xToPx(x);
+    const py = this._yToPx(y);
+    this._dragLabel.setAttribute("x", Math.max(PLOT.left + 40, Math.min(PLOT.right - 40, px)));
+    this._dragLabel.setAttribute("y", Math.max(PLOT.top + 20, py - 18));
+    this._dragLabel.textContent = `${x}° / ${y}°`;
   }
 
   _onUp(ev) {
@@ -343,6 +413,7 @@ class VentiRegCard extends HTMLElement {
     const i = this._dragIndex;
     this._dragIndex = null;
     this._circles[i].setAttribute("r", "9");
+    this._dragLabel.style.display = "none";
     try {
       this._svg.releasePointerCapture(ev.pointerId);
     } catch (e) {
