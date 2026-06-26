@@ -30,6 +30,9 @@ switchen er **på**:
 3. Avvik ≥ toleranse (default 0,5 °C, som er Flexit sitt reguleringssteg) →
    **noen andre har endret settpunktet** → gå i **auto-pause**: slå switch av,
    status = «Auto pauset», skriv tidspunkt, skriv **ingenting** til aggregatet.
+   Unntak: `_recently_wrote()` — innenfor `WRITE_CONFIRM_GRACE` (90 s) etter vår egen skriving
+   ignoreres avvik, så aggregatets ennå-ubekreftede ekko ikke gir **falsk** auto-pause
+   (var en reell feil ved raske kurve-endringer).
 4. Ellers → regn kurveverdi ut fra utetemp, rund til nærmeste 0,5 °C, og skriv til climate via
    `climate.set_temperature` **kun når kurveverdien faktisk er endret** (`abs(target - _last_set)
    >= 0.01`), lagre verdien som `_last_set`. Unngår unødvendige skrivinger.
@@ -83,19 +86,31 @@ flow etterpå.
 ## Redigering av kurven — tre veier, én kilde til sannhet
 
 Kurvepunktene lagres **kun** i `entry.options[CONF_CURVE_POINTS]` (streng på formatet
-`ute:tilluft`). Alle tre redigeringsveiene skriver dit, og en `update_listener` laster
-entryen på nytt (Store gjenoppretter `_last_set`, så pause-baselinen overlever reload):
+`ute:tilluft`). Alle tre redigeringsveiene skriver dit:
 
 1. **Options flow** (native, alltid tilgjengelig via «Konfigurer») — tekstfelt.
 2. **Tjenesten `ventireg.set_curve`** — `entity_id` (valgfri) + `curve` (streng eller liste).
    Resolver config entry via entitetens `config_entry_id`. Validerer med `parse_points`.
 3. **Det grafiske kortet** (`www/ventireg-card.js`) — dra punktene, kaller `set_curve` ved slipp.
 
+`update_listener` (`async_reload_entry`) er **smart**: koordinatoren leser kurve/toleranse/steg
+**live** via `_config()`, så slike endringer trigger **ingen reload** — bare en umiddelbar
+`async_refresh()` (som skriver nytt settpunkt til climate med en gang). Det unngår at kortet
+flimrer og gir umiddelbar respons. Kun endret intervall eller kilde-entiteter (`requires_reload`)
+gir full reload (der gjenoppretter Store `_last_set`).
+
 Punktene eksponeres for kortet som attributter på beregnet-settpunkt-sensoren:
 `curve_points`, `outdoor_temp`, `status`.
 
-Kortet er **ren JavaScript** (ingen byggesteg). Dragging er **kun vertikal** (x/utetemp er låst,
-kun tilluft endres), snappet til 0,5 °C.
+Kortet er **ren JavaScript** (ingen byggesteg). Punktene dras **fritt i 2D**: X (utetemp, snap til
+`x_step`, default 1°) og Y (tilluft, snap 0,5 °C). X klemmes mellom naboene så kurven holder seg
+strengt økende; X-aksen er fast (`min_outdoor`/`max_outdoor`, default ca. -25…30). Store usynlige
+trefflater rundt hvert punkt gjør det lett å treffe på touch. Linja/fyllet forlenges flatt ut til
+aksekantene for å vise clampingen. Endring lagres ved slipp via `set_curve`.
+
+**Optimistisk oppdatering:** etter slipp holder kortet på din verdi og ignorerer innkommende
+tilstand til backend bekrefter samme kurve (8 s timeout), så punktet ikke «spretter tilbake» mens
+backend henger etter.
 
 ### Auto-innlasting av kortet (`frontend.py`)
 
