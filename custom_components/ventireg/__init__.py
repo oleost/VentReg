@@ -1,13 +1,10 @@
 """VentiReg — kurvestyring av tilluftstemperatur."""
 from __future__ import annotations
 
-from pathlib import Path
-
 import voluptuous as vol
-from homeassistant.components.frontend import add_extra_js_url
-from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
+from homeassistant.core import CoreState, HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
@@ -16,13 +13,11 @@ from homeassistant.helpers.typing import ConfigType
 from .const import CONF_CURVE_POINTS, DOMAIN, PLATFORMS
 from .coordinator import VentiRegCoordinator
 from .curve import parse_points, points_to_string
+from .frontend import VentiRegCardRegistration
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 SERVICE_SET_CURVE = "set_curve"
-CARD_URL = "/ventireg/ventireg-card.js"
-# Bumpes ved endringer i kortet, så nettleseren henter ny versjon (cache-busting)
-CARD_VERSION = "0.2.1"
 
 SET_CURVE_SCHEMA = vol.Schema(
     {
@@ -34,8 +29,16 @@ SET_CURVE_SCHEMA = vol.Schema(
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Globalt oppsett (kjøres én gang): registrer tjeneste og det grafiske kortet."""
-    await _async_register_card(hass)
     _async_register_services(hass)
+
+    async def _register_frontend(_event: object = None) -> None:
+        await VentiRegCardRegistration(hass).async_register()
+
+    # Ressurs-registrering må skje etter at Lovelace-ressursene er lastet.
+    if hass.state is CoreState.running:
+        await _register_frontend()
+    else:
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _register_frontend)
     return True
 
 
@@ -63,19 +66,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Last inn på nytt når konfigurasjonen endres."""
     await hass.config_entries.async_reload(entry.entry_id)
-
-
-async def _async_register_card(hass: HomeAssistant) -> None:
-    """Server kort-fila og last den automatisk inn i frontend (kun én gang)."""
-    if hass.data.get(f"{DOMAIN}_card_registered"):
-        return
-    card_path = Path(__file__).parent / "www" / "ventireg-card.js"
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig(CARD_URL, str(card_path), False)]
-    )
-    # Versjonert URL → nettleseren henter ny fil etter oppdatering
-    add_extra_js_url(hass, f"{CARD_URL}?v={CARD_VERSION}")
-    hass.data[f"{DOMAIN}_card_registered"] = True
 
 
 def _async_register_services(hass: HomeAssistant) -> None:

@@ -86,16 +86,34 @@ entryen på nytt (Store gjenoppretter `_last_set`, så pause-baselinen overlever
 Punktene eksponeres for kortet som attributter på beregnet-settpunkt-sensoren:
 `curve_points`, `outdoor_temp`, `status`.
 
-Kortet er **ren JavaScript** (ingen byggesteg). `__init__.py` (`async_setup`) serverer fila på
-`/ventireg/ventireg-card.js` via `async_register_static_paths` og auto-laster den med
-`add_extra_js_url`, så brukeren slipper å registrere dashboard-ressurs manuelt. Dragging er
-**kun vertikal** (x/utetemp er låst, kun tilluft endres), snappet til 0,5 °C.
+Kortet er **ren JavaScript** (ingen byggesteg). Dragging er **kun vertikal** (x/utetemp er låst,
+kun tilluft endres), snappet til 0,5 °C.
+
+### Auto-innlasting av kortet (`frontend.py`)
+
+`add_extra_js_url` alene er **ikke** pålitelig for å få kortet til å dukke opp (kortet finnes ikke
+i frontend selv i inkognito). Den robuste, offisielle måten er å registrere kortet som en **ekte
+Lovelace-ressurs** i storage-modus — slik HACS gjør. `frontend.py` (`VentiRegCardRegistration`):
+
+1. Serverer `www/`-mappa på `/ventireg/` via `async_register_static_paths` (kort på
+   `/ventireg/ventireg-card.js`).
+2. **Storage-modus:** venter til `lovelace.resources.loaded` er True, og kaller deretter
+   `async_create_item`/`async_update_item` med `{res_type: module, url: …?v=CARD_VERSION}`.
+   Versjonert URL gir cache-busting; eksisterende ressurs oppdateres kun ved versjonsendring.
+3. **YAML-modus:** faller tilbake til `add_extra_js_url` (ressurser styres i YAML der).
+
+**Viktig timing-felle** (home-assistant/core#165767): kalles ressurs-API-et *før* ressurslista er
+lastet, slettes alle eksisterende ressurser i stillhet. Derfor venter vi på `resources.loaded`, og
+kjører registreringen først etter `EVENT_HOMEASSISTANT_STARTED` (eller umiddelbart hvis HA alt
+kjører). `manifest.json` har `dependencies: [http, frontend]` + `after_dependencies: [lovelace]`.
+Bump `CARD_VERSION` i `frontend.py` når kortet endres.
 
 ## Filstruktur
 
 ```
 custom_components/ventireg/
-├── __init__.py          # async_setup (tjeneste + kort-registrering), async_setup_entry
+├── __init__.py          # async_setup (tjeneste + frontend-trigger), async_setup_entry
+├── frontend.py          # VentiRegCardRegistration: kortet som Lovelace-ressurs
 ├── manifest.json
 ├── const.py             # DOMAIN, konfignøkler, defaults
 ├── config_flow.py       # ConfigFlow (oppsett) + OptionsFlow (endring)

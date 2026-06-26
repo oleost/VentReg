@@ -109,8 +109,9 @@ HA-språk — sjekk under Enheter og tjenester):
 
 ## Grafisk kurve-kort
 
-Integrasjonen **registrerer kortet automatisk** — du trenger *ikke* legge til en dashboard-ressurs
-manuelt. (Krever omstart av HA + hard refresh i nettleseren første gang.)
+Integrasjonen **registrerer kortet automatisk** som en Lovelace-ressurs (slik HACS gjør) — du
+trenger *ikke* legge til en dashboard-ressurs manuelt. Det skjer like etter at Home Assistant har
+startet. (Krever omstart av HA første gang; bruker du YAML-dashbord, se [Feilsøking](#feilsøking).)
 
 ### Legg kortet på et dashboard
 
@@ -176,9 +177,17 @@ Hvert 15. minutt (konfigurerbart), og kun når switchen er **på**:
 ## Feilsøking
 
 **Kortet vises ikke / «Custom element doesn't exist: ventireg-card».**
-Start HA på nytt etter installasjon/oppdatering, og gjør en hard refresh (Ctrl/Cmd+Shift+R) eller
-tøm nettleser-cache. Kortet serveres fra `/ventireg/ventireg-card.js` og lastes automatisk ved
-oppstart.
+Start HA på nytt etter installasjon/oppdatering. Kortet registreres som Lovelace-ressurs rett etter
+oppstart; sjekk **Innstillinger → Dashbord → Ressurser** — `/ventireg/ventireg-card.js` skal stå der.
+Gjør så en hard refresh (Ctrl/Cmd+Shift+R). Bruker du et **YAML-dashbord** (`mode: yaml`), styres
+ressurser i YAML — legg da til ressursen selv:
+
+```yaml
+# i konfigurasjonen for dashbordet (eller lovelace: resources:)
+resources:
+  - url: /ventireg/ventireg-card.js
+    type: module
+```
 
 **Settpunktet på aggregatet flytter seg ikke.**
 Bekreft at `climate.set_temperature` på din Flexit faktisk styrer *tilluft*. Test i
