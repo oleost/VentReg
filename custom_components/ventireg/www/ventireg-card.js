@@ -343,14 +343,23 @@ class VentiRegCard extends HTMLElement {
       t.textContent = `${x}°`;
     }
 
-    // Linje + fyll
+    // Linje + fyll — forlenges flatt ut til aksekantene for å vise clampingen
+    const n = this._points.length;
     const linePts = this._points.map(([x, y]) => `${this._xToPx(x)},${this._yToPx(y)}`);
-    this._linePath.setAttribute("d", "M" + linePts.join(" L"));
-    const x0 = this._xToPx(this._points[0][0]);
-    const xN = this._xToPx(this._points[this._points.length - 1][0]);
+    const xLeft = this._xToPx(this._xRange.min);
+    const xRight = this._xToPx(this._xRange.max);
+    const yFirst = this._yToPx(this._points[0][1]);
+    const yLast = this._yToPx(this._points[n - 1][1]);
+
+    this._linePath.setAttribute(
+      "d",
+      `M${xLeft},${yFirst} L` + linePts.join(" L") + ` L${xRight},${yLast}`
+    );
     this._areaPath.setAttribute(
       "d",
-      `M${x0},${PLOT.bottom} L` + linePts.join(" L") + ` L${xN},${PLOT.bottom} Z`
+      `M${xLeft},${PLOT.bottom} L${xLeft},${yFirst} L` +
+        linePts.join(" L") +
+        ` L${xRight},${yLast} L${xRight},${PLOT.bottom} Z`
     );
 
     // Punkter (synlig prikk + usynlig trefflate)
