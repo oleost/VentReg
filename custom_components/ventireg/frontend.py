@@ -23,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 URL_BASE = "/ventireg"
 CARD_FILENAME = "ventireg-card.js"
 # Bumpes når kortet endres, så frontend henter ny versjon (cache-busting)
-CARD_VERSION = "0.3.0"
+CARD_VERSION = "0.4.0"
 
 
 class VentiRegCardRegistration:

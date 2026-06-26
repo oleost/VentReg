@@ -15,8 +15,8 @@ const SVGNS = "http://www.w3.org/2000/svg";
 
 // Tegneflate i viewBox-koordinater (skaleres responsivt av nettleseren)
 const VB_W = 1000;
-const VB_H = 560;
-const PAD = { left: 70, right: 30, top: 30, bottom: 50 };
+const VB_H = 600;
+const PAD = { left: 88, right: 30, top: 30, bottom: 78 };
 const PLOT = {
   left: PAD.left,
   right: VB_W - PAD.right,
@@ -149,6 +149,27 @@ class VentiRegCard extends HTMLElement {
     this._spValEl = this.querySelector(".vr-sp-val");
     this._outEl = this.querySelector(".vr-out");
     this._setEl = this.querySelector(".vr-set");
+
+    // Akse-titler (statiske)
+    const xMid = (PLOT.left + PLOT.right) / 2;
+    const yMid = (PLOT.top + PLOT.bottom) / 2;
+    const xTitle = this._mk(svg, "text", {
+      x: xMid,
+      y: VB_H - 16,
+      "text-anchor": "middle",
+      "font-size": "22",
+      fill: "var(--secondary-text-color,#888)",
+    });
+    xTitle.textContent = "Utetemperatur (°C)";
+    const yTitle = this._mk(svg, "text", {
+      x: 26,
+      y: yMid,
+      "text-anchor": "middle",
+      "font-size": "22",
+      fill: "var(--secondary-text-color,#888)",
+      transform: `rotate(-90 26 ${yMid})`,
+    });
+    yTitle.textContent = "Tilluft (°C)";
 
     // Lag-rekkefølge: rutenett, fyll, linje, markør, punkter
     this._gridG = this._mk(svg, "g");
