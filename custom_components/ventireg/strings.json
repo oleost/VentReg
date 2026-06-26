@@ -1,0 +1,60 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "VentiReg",
+        "description": "Curve control of supply air temperature based on outdoor temperature.",
+        "data": {
+          "outdoor_sensor": "Outdoor temperature sensor",
+          "climate_entity": "Ventilation (climate)",
+          "curve_points": "Curve points (outdoor:supply)",
+          "update_interval": "Update interval (min)",
+          "tolerance": "External-change tolerance (°C)",
+          "step": "Rounding step (°C)"
+        }
+      }
+    },
+    "error": {
+      "invalid_curve": "Invalid curve points. Use 'outdoor:supply', e.g. 5:22, 20:10."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "VentiReg",
+        "description": "Adjust curve and regulation settings.",
+        "data": {
+          "outdoor_sensor": "Outdoor temperature sensor",
+          "climate_entity": "Ventilation (climate)",
+          "curve_points": "Curve points (outdoor:supply)",
+          "update_interval": "Update interval (min)",
+          "tolerance": "External-change tolerance (°C)",
+          "step": "Rounding step (°C)"
+        }
+      }
+    },
+    "error": {
+      "invalid_curve": "Invalid curve points. Use 'outdoor:supply', e.g. 5:22, 20:10."
+    }
+  },
+  "entity": {
+    "switch": {
+      "regulation": {
+        "name": "Regulation"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "on": "On",
+          "off": "Off",
+          "auto_paused": "Auto paused"
+        }
+      },
+      "target": {
+        "name": "Calculated setpoint"
+      }
+    }
+  }
+}

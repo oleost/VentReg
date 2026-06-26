@@ -1,0 +1,60 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "VentiReg",
+        "description": "Kurvestyring av tilluftstemperatur basert på utetemperatur.",
+        "data": {
+          "outdoor_sensor": "Utetemperatur-sensor",
+          "climate_entity": "Ventilasjon (climate)",
+          "curve_points": "Kurvepunkter (ute:tilluft)",
+          "update_interval": "Oppdateringsintervall (min)",
+          "tolerance": "Toleranse for ekstern endring (°C)",
+          "step": "Avrundingssteg (°C)"
+        }
+      }
+    },
+    "error": {
+      "invalid_curve": "Ugyldige kurvepunkter. Bruk 'ute:tilluft', f.eks. 5:22, 20:10."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "VentiReg",
+        "description": "Juster kurve og reguleringsinnstillinger.",
+        "data": {
+          "outdoor_sensor": "Utetemperatur-sensor",
+          "climate_entity": "Ventilasjon (climate)",
+          "curve_points": "Kurvepunkter (ute:tilluft)",
+          "update_interval": "Oppdateringsintervall (min)",
+          "tolerance": "Toleranse for ekstern endring (°C)",
+          "step": "Avrundingssteg (°C)"
+        }
+      }
+    },
+    "error": {
+      "invalid_curve": "Ugyldige kurvepunkter. Bruk 'ute:tilluft', f.eks. 5:22, 20:10."
+    }
+  },
+  "entity": {
+    "switch": {
+      "regulation": {
+        "name": "Regulering"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "on": "På",
+          "off": "Av",
+          "auto_paused": "Auto pauset"
+        }
+      },
+      "target": {
+        "name": "Beregnet settpunkt"
+      }
+    }
+  }
+}
