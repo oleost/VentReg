@@ -47,6 +47,25 @@ Tilluft
 | Toleranse | °C-avvik som regnes som ekstern endring (default 0,5) |
 | Avrundingssteg | Steg settpunktet rundes til (default 0,5) |
 
+## Grafisk kurve-kort
+
+Integrasjonen registrerer automatisk et Lovelace-kort (du trenger **ikke** legge til en
+dashboard-ressurs manuelt). Legg det til på et dashboard:
+
+```yaml
+type: custom:ventireg-card
+entity: sensor.ventireg_calculated_setpoint
+title: Utekompensert kurve   # valgfritt
+```
+
+Dra hvert punkt opp/ned for å justere tilluften ved den utetemperaturen. Endringen lagres
+ved slipp via tjenesten `ventireg.set_curve`. En stiplet linje viser nåværende utetemperatur
+og prikken viser gjeldende settpunkt.
+
+> Kurven kan **også** endres helt uten kortet — via **Konfigurer** på integrasjonen (tekstfelt),
+> eller ved å kalle `ventireg.set_curve` fra en automasjon. Kortet er bare en penere måte å
+> gjøre det samme på.
+
 ## Slik virker pause/gjenoppta
 
 VentiReg sjekker **før** hver skriving om climate-settpunktet avviker fra det den selv satt

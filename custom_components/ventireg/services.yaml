@@ -1,0 +1,25 @@
+set_curve:
+  name: Sett kurve
+  description: >-
+    Overskriv kurvepunktene for en VentiReg-instans. Brukes av det grafiske
+    kortet, men kan også kalles fra automasjoner eller utviklerverktøy.
+  fields:
+    entity_id:
+      name: Entitet
+      description: >-
+        En hvilken som helst VentiReg-entitet for instansen du vil endre.
+        Kan utelates hvis du bare har én VentiReg-instans.
+      required: false
+      example: sensor.ventireg_calculated_setpoint
+      selector:
+        entity:
+          integration: ventireg
+    curve:
+      name: Kurvepunkter
+      description: >-
+        Enten en streng på formatet 'ute:tilluft' (f.eks. "5:22, 20:10"),
+        eller en liste av [ute, tilluft]-par.
+      required: true
+      example: "5:22, 20:10"
+      selector:
+        object:

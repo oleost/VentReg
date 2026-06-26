@@ -66,3 +66,13 @@ class VentiRegTargetSensor(CoordinatorEntity[VentiRegCoordinator], SensorEntity)
     @property
     def native_value(self) -> float | None:
         return (self.coordinator.data or {}).get("target")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object]:
+        """Eksponer kurvedata slik at det grafiske kortet kan lese/tegne den."""
+        data = self.coordinator.data or {}
+        return {
+            "curve_points": data.get("curve_points"),
+            "outdoor_temp": data.get("outdoor"),
+            "status": self.coordinator.status,
+        }

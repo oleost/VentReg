@@ -72,22 +72,42 @@ Alt er konfigurerbart i UI — **ingenting hardkodet**.
 Kjerne-entitetene settes i første oppsett; kurve/intervall/toleranse kan endres i options
 flow etterpå.
 
+## Redigering av kurven — tre veier, én kilde til sannhet
+
+Kurvepunktene lagres **kun** i `entry.options[CONF_CURVE_POINTS]` (streng på formatet
+`ute:tilluft`). Alle tre redigeringsveiene skriver dit, og en `update_listener` laster
+entryen på nytt (Store gjenoppretter `_last_set`, så pause-baselinen overlever reload):
+
+1. **Options flow** (native, alltid tilgjengelig via «Konfigurer») — tekstfelt.
+2. **Tjenesten `ventireg.set_curve`** — `entity_id` (valgfri) + `curve` (streng eller liste).
+   Resolver config entry via entitetens `config_entry_id`. Validerer med `parse_points`.
+3. **Det grafiske kortet** (`www/ventireg-card.js`) — dra punktene, kaller `set_curve` ved slipp.
+
+Punktene eksponeres for kortet som attributter på beregnet-settpunkt-sensoren:
+`curve_points`, `outdoor_temp`, `status`.
+
+Kortet er **ren JavaScript** (ingen byggesteg). `__init__.py` (`async_setup`) serverer fila på
+`/ventireg/ventireg-card.js` via `async_register_static_paths` og auto-laster den med
+`add_extra_js_url`, så brukeren slipper å registrere dashboard-ressurs manuelt. Dragging er
+**kun vertikal** (x/utetemp er låst, kun tilluft endres), snappet til 0,5 °C.
+
 ## Filstruktur
 
 ```
 custom_components/ventireg/
-├── __init__.py          # async_setup_entry, oppretter coordinator, laster plattformer
+├── __init__.py          # async_setup (tjeneste + kort-registrering), async_setup_entry
 ├── manifest.json
 ├── const.py             # DOMAIN, konfignøkler, defaults
 ├── config_flow.py       # ConfigFlow (oppsett) + OptionsFlow (endring)
 ├── coordinator.py       # VentiRegCoordinator: sløyfa, pause-logikk, varsling
-├── curve.py             # parsing + stykkevis-lineær interpolasjon + avrunding
+├── curve.py             # parsing + interpolasjon + avrunding + points_to_string
 ├── switch.py            # switch-entitet (på/av/auto-pause)
-├── sensor.py            # status- + beregnet-settpunkt-sensorer
+├── sensor.py            # status- + beregnet-settpunkt-sensorer (curve_points-attributter)
+├── services.yaml        # ventireg.set_curve
 ├── strings.json         # config/options UI-tekst (engelsk basis)
-└── translations/
-    ├── en.json
-    └── nb.json
+├── translations/        # en.json, nb.json
+└── www/
+    └── ventireg-card.js # grafisk kurve-kort (vanilla JS, ingen bygging)
 ```
 
 ## Designvalg / kjente begrensninger

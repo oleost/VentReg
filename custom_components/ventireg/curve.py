@@ -77,3 +77,12 @@ def round_to_step(value: float, step: float = 0.5) -> float:
     if step <= 0:
         return value
     return round(value / step) * step
+
+
+def points_to_string(points: list[Point]) -> str:
+    """Serialiser punkter tilbake til 'ute:tilluft'-strengformatet."""
+
+    def fmt(value: float) -> str:
+        return str(int(value)) if float(value).is_integer() else str(value)
+
+    return ", ".join(f"{fmt(x)}:{fmt(y)}" for x, y in points)

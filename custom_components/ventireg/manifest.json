@@ -1,6 +1,7 @@
 {
   "domain": "ventireg",
   "name": "VentiReg",
+  "after_dependencies": ["frontend", "http", "lovelace"],
   "codeowners": ["@oleost"],
   "config_flow": true,
   "documentation": "https://github.com/oleost/VentReg",
@@ -8,5 +9,5 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/oleost/VentReg/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

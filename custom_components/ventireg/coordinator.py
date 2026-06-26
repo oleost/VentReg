@@ -134,7 +134,12 @@ class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return self.data or {"outdoor": None, "target": None, "status": self.status}
 
         target = round_to_step(interpolate(points, outdoor), step)
-        result = {"outdoor": outdoor, "target": target, "status": self.status}
+        result = {
+            "outdoor": outdoor,
+            "target": target,
+            "status": self.status,
+            "curve_points": [list(point) for point in points],
+        }
 
         if not self.enabled:
             return result
