@@ -79,6 +79,22 @@ class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _config(self) -> dict[str, Any]:
         return {**self.entry.data, **self.entry.options}
 
+    def requires_reload(self, cfg: dict[str, Any]) -> bool:
+        """True hvis en options-endring krever full reload.
+
+        Kurve/toleranse/steg leses live av sløyfa og trenger ingen reload (unngår at
+        kortet flimrer ved hver endring). Bare endret intervall eller kilde-entiteter
+        krever at koordinatoren bygges på nytt.
+        """
+        new_interval = timedelta(
+            minutes=int(cfg.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL))
+        )
+        return (
+            self.update_interval != new_interval
+            or self._outdoor_entity != cfg.get(CONF_OUTDOOR_SENSOR)
+            or self._climate_entity != cfg.get(CONF_CLIMATE_ENTITY)
+        )
+
     # ------------------------------------------------------------ livssyklus
     async def async_initialize(self) -> None:
         """Gjenopprett lagret tilstand før første kjøring."""

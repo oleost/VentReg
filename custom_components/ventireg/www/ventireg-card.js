@@ -46,20 +46,25 @@ class VentiRegCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     const stateObj = hass.states[this._config.entity];
-    if (!stateObj) {
-      this._renderError(`Ukjent entitet: ${this._config.entity}`);
+    const incoming =
+      stateObj && stateObj.attributes ? stateObj.attributes.curve_points : null;
+    const valid = Array.isArray(incoming) && incoming.length >= 2;
+
+    if (!valid) {
+      // Forbigående utilgjengelig (typisk under en reload) → behold forrige gyldige
+      // visning i stedet for å blinke opp en feilmelding.
+      if (this._built && this._points) return;
+      this._renderError(
+        stateObj
+          ? "Venter på gyldige curve_points …"
+          : `Ukjent entitet: ${this._config.entity}`
+      );
       return;
     }
 
     this._outdoor = Number(stateObj.attributes.outdoor_temp);
     this._setpoint = Number(stateObj.state);
     this._status = stateObj.attributes.status;
-
-    const incoming = stateObj.attributes.curve_points;
-    if (!Array.isArray(incoming) || incoming.length < 2) {
-      this._renderError("Entiteten mangler gyldige curve_points.");
-      return;
-    }
 
     // Ikke overstyr brukerens drag med innkommende tilstand mens han drar
     if (this._dragIndex === null) {
@@ -226,16 +231,23 @@ class VentiRegCard extends HTMLElement {
       fill: "var(--primary-color,#41bdf5)",
     });
 
-    this._circles = this._points.map((_, i) => {
-      const c = this._mk(svg, "circle", {
-        r: "9",
+    // Synlige prikker (litt større for å se/sikte bedre)
+    this._circles = this._points.map(() =>
+      this._mk(svg, "circle", {
+        r: "12",
         fill: "var(--card-background-color,#fff)",
         stroke: "var(--warning-color,#ff9800)",
         "stroke-width": "3",
-      });
-      c.classList.add("vr-pt");
-      c.addEventListener("pointerdown", (ev) => this._onDown(ev, i));
-      return c;
+      })
+    );
+
+    // Store, usynlige trefflater oppå — gjør det lett å treffe på touch
+    this._hitCircles = this._points.map((_, i) => {
+      const h = this._mk(svg, "circle", { r: "45", fill: "transparent" });
+      h.classList.add("vr-pt");
+      h.style.touchAction = "none";
+      h.addEventListener("pointerdown", (ev) => this._onDown(ev, i));
+      return h;
     });
 
     // Verdivisning som dukker opp mens man drar
@@ -246,6 +258,7 @@ class VentiRegCard extends HTMLElement {
       fill: "var(--primary-text-color,#222)",
     });
     this._dragLabel.style.display = "none";
+    this._dragLabel.style.pointerEvents = "none";
 
     svg.addEventListener("pointermove", (ev) => this._onMove(ev));
     svg.addEventListener("pointerup", (ev) => this._onUp(ev));
@@ -307,10 +320,14 @@ class VentiRegCard extends HTMLElement {
       `M${x0},${PLOT.bottom} L` + linePts.join(" L") + ` L${xN},${PLOT.bottom} Z`
     );
 
-    // Punkter
+    // Punkter (synlig prikk + usynlig trefflate)
     this._points.forEach(([x, y], i) => {
-      this._circles[i].setAttribute("cx", this._xToPx(x));
-      this._circles[i].setAttribute("cy", this._yToPx(y));
+      const cx = this._xToPx(x);
+      const cy = this._yToPx(y);
+      this._circles[i].setAttribute("cx", cx);
+      this._circles[i].setAttribute("cy", cy);
+      this._hitCircles[i].setAttribute("cx", cx);
+      this._hitCircles[i].setAttribute("cy", cy);
     });
 
     // Ute-markør + nåværende settpunkt
@@ -376,7 +393,7 @@ class VentiRegCard extends HTMLElement {
     ev.preventDefault();
     this._dragIndex = i;
     this._svg.setPointerCapture(ev.pointerId);
-    this._circles[i].setAttribute("r", "11");
+    this._circles[i].setAttribute("r", "16");
     this._dragLabel.style.display = "";
   }
 
@@ -412,7 +429,7 @@ class VentiRegCard extends HTMLElement {
     if (this._dragIndex === null) return;
     const i = this._dragIndex;
     this._dragIndex = null;
-    this._circles[i].setAttribute("r", "9");
+    this._circles[i].setAttribute("r", "12");
     this._dragLabel.style.display = "none";
     try {
       this._svg.releasePointerCapture(ev.pointerId);

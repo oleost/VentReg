@@ -65,8 +65,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Last inn på nytt når konfigurasjonen endres."""
-    await hass.config_entries.async_reload(entry.entry_id)
+    """Reager på konfigurasjonsendringer.
+
+    Kurve/toleranse/steg leses live av koordinatoren → bare regn på nytt (ingen reload,
+    så kortet flimrer ikke). Endret intervall/kilde-entiteter → full reload.
+    """
+    coordinator: VentiRegCoordinator | None = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    cfg = {**entry.data, **entry.options}
+    if coordinator is None or coordinator.requires_reload(cfg):
+        await hass.config_entries.async_reload(entry.entry_id)
+    else:
+        await coordinator.async_request_refresh()
 
 
 def _async_register_services(hass: HomeAssistant) -> None:
