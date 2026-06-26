@@ -345,14 +345,20 @@ class VentiRegCard extends HTMLElement {
   }
 }
 
-customElements.define("ventireg-card", VentiRegCard);
+if (!customElements.get("ventireg-card")) {
+  customElements.define("ventireg-card", VentiRegCard);
 
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "ventireg-card",
-  name: "VentiReg Kurve",
-  description: "Grafisk visning og redigering av tilluftskurven (dra punktene).",
-  preview: false,
-});
+  window.customCards = window.customCards || [];
+  window.customCards.push({
+    type: "ventireg-card",
+    name: "VentiReg Kurve",
+    description: "Grafisk visning og redigering av tilluftskurven (dra punktene).",
+    preview: false,
+  });
 
-console.info("%c VENTIREG-CARD %c lastet ", "background:#ff9800;color:#fff", "");
+  console.info(
+    "%c VENTIREG-CARD %c lastet ",
+    "background:#ff9800;color:#fff;border-radius:3px",
+    ""
+  );
+}

@@ -21,6 +21,8 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 SERVICE_SET_CURVE = "set_curve"
 CARD_URL = "/ventireg/ventireg-card.js"
+# Bumpes ved endringer i kortet, så nettleseren henter ny versjon (cache-busting)
+CARD_VERSION = "0.2.1"
 
 SET_CURVE_SCHEMA = vol.Schema(
     {
@@ -71,7 +73,8 @@ async def _async_register_card(hass: HomeAssistant) -> None:
     await hass.http.async_register_static_paths(
         [StaticPathConfig(CARD_URL, str(card_path), False)]
     )
-    add_extra_js_url(hass, CARD_URL)
+    # Versjonert URL → nettleseren henter ny fil etter oppdatering
+    add_extra_js_url(hass, f"{CARD_URL}?v={CARD_VERSION}")
     hass.data[f"{DOMAIN}_card_registered"] = True
 
 
