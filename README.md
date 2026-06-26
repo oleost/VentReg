@@ -80,7 +80,7 @@ Ved «Legg til integrasjon» (og senere via **Konfigurer**) setter du:
 |---|---|---|
 | Utetemperatur-sensor | `sensor.*` som måler ute | – |
 | Ventilasjon (climate) | `climate.*` der target = tilluftstemperatur | – |
-| Kurvepunkter | `ute:tilluft`, skilt med komma/linjeskift, f.eks. `5:22, 20:10` | `5:22, 20:10` |
+| Kurvepunkter | `ute:tilluft`, skilt med komma/linjeskift, f.eks. `5:22, 20:10` | `-5:23, 5:20, 10:18, 20:10` |
 | Oppdateringsintervall | Minutter mellom hver beregning | 15 |
 | Toleranse | °C-avvik som regnes som ekstern endring | 0,5 |
 | Avrundingssteg | Steg settpunktet rundes til | 0,5 |
@@ -89,7 +89,8 @@ Ved «Legg til integrasjon» (og senere via **Konfigurer**) setter du:
 punktum. Punkter skilles med komma, semikolon eller linjeskift. Eksempler:
 
 ```
-5:22, 20:10                      # to punkter (default)
+-5:23, 5:20, 10:18, 20:10         # fire punkter (default)
+5:22, 20:10                       # enkleste, to punkter
 -20:23, -10:23, 0:22, 10:21, 20:15, 25:15   # multipunkt
 ```
 

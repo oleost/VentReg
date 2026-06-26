@@ -17,7 +17,7 @@ CONF_TOLERANCE = "tolerance"
 CONF_STEP = "step"
 
 # Defaults
-DEFAULT_CURVE_POINTS = "5:22, 20:10"
+DEFAULT_CURVE_POINTS = "-5:23, 5:20, 10:18, 20:10"
 DEFAULT_UPDATE_INTERVAL = 15  # minutter
 DEFAULT_TOLERANCE = 0.5  # °C
 DEFAULT_STEP = 0.5  # °C (Flexit regulerer i 0,5-steg)
