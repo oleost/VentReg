@@ -41,6 +41,8 @@ class VentiRegCard extends HTMLElement {
     this._xRange = null; // {min, max} — fast X-akse
     this._yRange = null; // {min, max}
     this._built = false;
+    this._pendingCurve = null; // kurve vi nettopp lagret, venter på bekreftelse
+    this._pendingTimer = null;
   }
 
   set hass(hass) {
@@ -67,10 +69,23 @@ class VentiRegCard extends HTMLElement {
     this._status = stateObj.attributes.status;
 
     // Ikke overstyr brukerens drag med innkommende tilstand mens han drar
+    // Ikke overstyr brukerens drag med innkommende tilstand mens han drar
     if (this._dragIndex === null) {
       const next = incoming
         .map((p) => [Number(p[0]), Number(p[1])])
         .sort((a, b) => a[0] - b[0]);
+
+      // Optimistisk: etter at vi har lagret, ignorer stale innkommende data helt til
+      // backend bekrefter vår nye kurve (ellers «spretter» punktet tilbake).
+      if (this._pendingCurve) {
+        if (this._curvesEqual(next, this._pendingCurve)) {
+          this._clearPending(); // bekreftet
+        } else {
+          this._updateGeometry(); // behold vår visning
+          return;
+        }
+      }
+
       const countChanged = !this._points || this._points.length !== next.length;
       this._points = next;
       if (!this._built || countChanged) {
@@ -80,6 +95,24 @@ class VentiRegCard extends HTMLElement {
       }
     }
     this._updateGeometry();
+  }
+
+  _curvesEqual(a, b) {
+    if (!a || !b || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (Math.abs(a[i][0] - b[i][0]) > 0.001 || Math.abs(a[i][1] - b[i][1]) > 0.001) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  _clearPending() {
+    this._pendingCurve = null;
+    if (this._pendingTimer) {
+      clearTimeout(this._pendingTimer);
+      this._pendingTimer = null;
+    }
   }
 
   getCardSize() {
@@ -441,6 +474,10 @@ class VentiRegCard extends HTMLElement {
 
   _save() {
     const curve = this._points.map(([x, y]) => [x, y]);
+    // Hold på vår verdi til backend bekrefter (eller til en timeout, som sikkerhetsnett)
+    this._pendingCurve = curve.map((p) => [p[0], p[1]]);
+    if (this._pendingTimer) clearTimeout(this._pendingTimer);
+    this._pendingTimer = setTimeout(() => this._clearPending(), 8000);
     this._hass.callService("ventireg", "set_curve", {
       entity_id: this._config.entity,
       curve,

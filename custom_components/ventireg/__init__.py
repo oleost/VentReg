@@ -75,7 +75,8 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     if coordinator is None or coordinator.requires_reload(cfg):
         await hass.config_entries.async_reload(entry.entry_id)
     else:
-        await coordinator.async_request_refresh()
+        # Umiddelbar oppdatering (ikke debounced) så kortet bekreftes raskt
+        await coordinator.async_refresh()
 
 
 def _async_register_services(hass: HomeAssistant) -> None:
