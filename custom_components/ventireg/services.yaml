@@ -10,7 +10,7 @@ set_curve:
         En hvilken som helst VentiReg-entitet for instansen du vil endre.
         Kan utelates hvis du bare har én VentiReg-instans.
       required: false
-      example: sensor.ventireg_calculated_setpoint
+      example: sensor.ventireg_beregnet_settpunkt
       selector:
         entity:
           integration: ventireg

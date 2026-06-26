@@ -7,7 +7,7 @@
  *
  * Dashboard-konfig:
  *   type: custom:ventireg-card
- *   entity: sensor.ventireg_calculated_setpoint
+ *   entity: sensor.ventireg_beregnet_settpunkt   # din faktiske id (avhenger av HA-språk)
  *   title: Utekompensert kurve     # valgfritt
  */
 

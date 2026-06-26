@@ -105,7 +105,11 @@ HA-språk — sjekk under Enheter og tjenester):
 |---|---|---|
 | `switch.ventireg_regulation` | switch | På = aktiv regulering. Av = stoppet (manuelt **eller** auto-pauset). |
 | `sensor.ventireg_status` | sensor (enum) | `På` / `Av` / `Auto pauset`. |
-| `sensor.ventireg_calculated_setpoint` | sensor (°C) | Settpunktet kurven gir akkurat nå. Har attributtene `curve_points`, `outdoor_temp` og `status` (brukes av kortet). |
+| `sensor.ventireg_beregnet_settpunkt`¹ | sensor (°C) | Settpunktet kurven gir akkurat nå. Har attributtene `curve_points`, `outdoor_temp` og `status` (brukes av kortet). |
+
+¹ Entitets-id-en følger **HA-språket** ditt. På norsk blir den `sensor.ventireg_beregnet_settpunkt`,
+på engelsk `sensor.ventireg_calculated_setpoint`. **Sjekk den faktiske id-en** under Innstillinger →
+Enheter og tjenester → VentiReg, og bruk den i kort-/tjeneste-konfigurasjonen under.
 
 ## Grafisk kurve-kort
 
@@ -119,7 +123,7 @@ Rediger dashboardet → **+ Legg til kort** → søk **VentiReg Kurve**, eller b
 
 ```yaml
 type: custom:ventireg-card
-entity: sensor.ventireg_calculated_setpoint
+entity: sensor.ventireg_beregnet_settpunkt   # bruk din faktiske entitets-id (se note ¹)
 title: Utekompensert kurve
 ```
 
@@ -154,7 +158,7 @@ Overskriv kurvepunktene fra en automasjon, et skript eller utviklerverktøy.
 ```yaml
 service: ventireg.set_curve
 data:
-  entity_id: sensor.ventireg_calculated_setpoint
+  entity_id: sensor.ventireg_beregnet_settpunkt   # din faktiske entitets-id
   curve: "0:23, 10:18, 20:10"
 ```
 
