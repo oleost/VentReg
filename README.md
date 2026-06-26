@@ -1,5 +1,9 @@
 # VentiReg
 
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![GitHub release](https://img.shields.io/github/v/release/oleost/VentReg?include_prereleases&sort=semver)](https://github.com/oleost/VentReg/releases)
+[![License](https://img.shields.io/github/license/oleost/VentReg)](LICENSE)
+
 Home Assistant custom integration for **kurvestyring av tilluftstemperatur** på ventilasjon
 (primært Flexit), basert på utetemperatur — slik en varmekurve/værkompensering fungerer.
 
