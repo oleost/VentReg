@@ -36,6 +36,9 @@ from .curve import interpolate, parse_points, round_to_step
 
 _LOGGER = logging.getLogger(__name__)
 STORAGE_VERSION = 1
+# Hvor lenge etter vår egen skriving vi venter på at aggregatet bekrefter verdien,
+# før et avvik igjen tolkes som ekstern endring (unngår falsk auto-pause).
+WRITE_CONFIRM_GRACE = timedelta(seconds=90)
 
 
 class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -56,6 +59,7 @@ class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.enabled = True
         self.status = STATUS_ON
         self._last_set: float | None = None
+        self._last_write_at = None
         self._paused_since = None
         self._cancel_notify = None
 
@@ -198,11 +202,14 @@ class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return result
 
         # Sjekk ALLTID før vi skriver: har noen andre endret settpunktet?
+        # Ignorer avvik like etter vår egen skriving (aggregatet har ikke rukket å
+        # bekrefte ennå) — ellers ville raske kurve-endringer gi falsk auto-pause.
         current = self._read_climate_setpoint(cfg[CONF_CLIMATE_ENTITY])
         if (
             self._last_set is not None
             and current is not None
             and abs(current - self._last_set) >= tolerance
+            and not self._recently_wrote()
         ):
             await self._async_auto_pause()
             result["status"] = self.status
@@ -213,8 +220,16 @@ class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self._last_set is None or abs(target - self._last_set) >= 0.01:
             await self._async_write_setpoint(cfg[CONF_CLIMATE_ENTITY], target)
             self._last_set = target
+            self._last_write_at = dt_util.utcnow()
             await self._save()
         return result
+
+    def _recently_wrote(self) -> bool:
+        """True like etter at vi selv skrev — gir aggregatet tid til å bekrefte verdien."""
+        return (
+            self._last_write_at is not None
+            and (dt_util.utcnow() - self._last_write_at) < WRITE_CONFIRM_GRACE
+        )
 
     async def _async_write_setpoint(self, climate_entity: str, target: float) -> None:
         await self.hass.services.async_call(
