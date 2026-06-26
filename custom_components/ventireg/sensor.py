@@ -74,5 +74,6 @@ class VentiRegTargetSensor(CoordinatorEntity[VentiRegCoordinator], SensorEntity)
         return {
             "curve_points": data.get("curve_points"),
             "outdoor_temp": data.get("outdoor"),
+            "supply_temp": data.get("supply"),
             "status": self.coordinator.status,
         }

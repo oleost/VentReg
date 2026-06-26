@@ -7,6 +7,7 @@
         "data": {
           "outdoor_sensor": "Utetemperatur-sensor",
           "climate_entity": "Ventilasjon (climate)",
+          "supply_sensor": "Tilluft-sensor (valgfri, kun for graf)",
           "curve_points": "Kurvepunkter (ute:tilluft)",
           "update_interval": "Oppdateringsintervall (min)",
           "tolerance": "Toleranse for ekstern endring (°C)",
@@ -26,6 +27,7 @@
         "data": {
           "outdoor_sensor": "Utetemperatur-sensor",
           "climate_entity": "Ventilasjon (climate)",
+          "supply_sensor": "Tilluft-sensor (valgfri, kun for graf)",
           "curve_points": "Kurvepunkter (ute:tilluft)",
           "update_interval": "Oppdateringsintervall (min)",
           "tolerance": "Toleranse for ekstern endring (°C)",

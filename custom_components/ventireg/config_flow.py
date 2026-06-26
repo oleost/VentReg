@@ -14,6 +14,7 @@ from .const import (
     CONF_CURVE_POINTS,
     CONF_OUTDOOR_SENSOR,
     CONF_STEP,
+    CONF_SUPPLY_SENSOR,
     CONF_TOLERANCE,
     CONF_UPDATE_INTERVAL,
     DEFAULT_CURVE_POINTS,
@@ -42,6 +43,14 @@ def _build_schema(defaults: dict[str, Any]) -> vol.Schema:
                 CONF_CLIMATE_ENTITY, default=default(CONF_CLIMATE_ENTITY)
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="climate")
+            ),
+            # Valgfri: faktisk målt tilluft, vises kun i grafen (påvirker ikke regulering).
+            # suggested_value (ikke default) gjør at feltet kan tømmes igjen.
+            vol.Optional(
+                CONF_SUPPLY_SENSOR,
+                description={"suggested_value": default(CONF_SUPPLY_SENSOR, None)},
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
             ),
             vol.Required(
                 CONF_CURVE_POINTS,

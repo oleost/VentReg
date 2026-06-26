@@ -75,6 +75,9 @@ Alt er konfigurerbart i UI — **ingenting hardkodet**.
 
 - `outdoor_sensor` — utetemperatur-sensor (`sensor.*`)
 - `climate_entity` — ventilasjons-climate (`climate.*`), target = tilluftstemperatur
+- `supply_sensor` — **valgfri** sensor for faktisk målt tilluft (`sensor.*`). Påvirker **ikke**
+  reguleringen; eksponeres kun som `supply_temp` på beregnet-settpunkt-sensoren og tegnes som en
+  grønn prikk i kortet (på samme ute-linje som settpunktet), til sammenligning.
 - `curve_points` — multilinje/komma-separert liste, format `ute:tilluft` (f.eks. `5:22, 20:10`)
 - `update_interval` — minutter (default 15)
 - `tolerance` — °C avvik som regnes som ekstern endring (default 0,5)
@@ -100,7 +103,8 @@ flimrer og gir umiddelbar respons. Kun endret intervall eller kilde-entiteter (`
 gir full reload (der gjenoppretter Store `_last_set`).
 
 Punktene eksponeres for kortet som attributter på beregnet-settpunkt-sensoren:
-`curve_points`, `outdoor_temp`, `status`.
+`curve_points`, `outdoor_temp`, `supply_temp` (valgfri målt tilluft, `None` når ikke konfigurert),
+`status`.
 
 Kortet er **ren JavaScript** (ingen byggesteg). Punktene dras **fritt i 2D**: X (utetemp, snap til
 `x_step`, default 1°) og Y (tilluft, snap 0,5 °C). X klemmes mellom naboene så kurven holder seg

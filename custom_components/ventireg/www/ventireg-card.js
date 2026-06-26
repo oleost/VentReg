@@ -5,6 +5,10 @@
  * sine attributter, lar deg dra hvert punkt fritt (venstre/høyre + opp/ned), og
  * lagrer ved å kalle tjenesten ventireg.set_curve.
  *
+ * Hvis en valgfri tilluft-sensor er satt opp i integrasjonen (supply_temp-attributt),
+ * vises faktisk målt tilluft som en grønn prikk på ute-linja, til sammenligning med
+ * det beregnede settpunktet.
+ *
  * Dashboard-konfig:
  *   type: custom:ventireg-card
  *   entity: sensor.ventireg_beregnet_settpunkt   # din faktiske id (avhenger av HA-språk)
@@ -67,6 +71,9 @@ class VentiRegCard extends HTMLElement {
     this._outdoor = Number(stateObj.attributes.outdoor_temp);
     this._setpoint = Number(stateObj.state);
     this._status = stateObj.attributes.status;
+    // Valgfri målt tilluft (null/undefined når sensor ikke er konfigurert).
+    const supply = stateObj.attributes.supply_temp;
+    this._supply = supply === null || supply === undefined ? NaN : Number(supply);
 
     // Ikke overstyr brukerens drag med innkommende tilstand mens han drar
     // Ikke overstyr brukerens drag med innkommende tilstand mens han drar
@@ -145,6 +152,10 @@ class VentiRegCard extends HTMLElement {
       min = Math.min(min, Math.floor(this._setpoint));
       max = Math.max(max, Math.ceil(this._setpoint));
     }
+    if (Number.isFinite(this._supply)) {
+      min = Math.min(min, Math.floor(this._supply));
+      max = Math.max(max, Math.ceil(this._supply));
+    }
     if (max - min < 4) max = min + 4;
     return { min, max };
   }
@@ -208,6 +219,7 @@ class VentiRegCard extends HTMLElement {
         <div class="vr-chips">
           <div class="vr-chip">Ute<b class="vr-out">–</b></div>
           <div class="vr-chip">Settpunkt<b class="vr-set">–</b></div>
+          <div class="vr-chip vr-sup-chip" style="display:none">Målt tilluft<b class="vr-sup">–</b></div>
         </div>
         <div class="vr-hint">Dra punktene fritt — venstre/høyre (ute) og opp/ned (tilluft)</div>
       </ha-card>
@@ -218,6 +230,8 @@ class VentiRegCard extends HTMLElement {
     this._spValEl = this.querySelector(".vr-sp-val");
     this._outEl = this.querySelector(".vr-out");
     this._setEl = this.querySelector(".vr-set");
+    this._supEl = this.querySelector(".vr-sup");
+    this._supChip = this.querySelector(".vr-sup-chip");
 
     // Akse-titler (statiske)
     const xMid = (PLOT.left + PLOT.right) / 2;
@@ -263,6 +277,15 @@ class VentiRegCard extends HTMLElement {
       r: "6",
       fill: "var(--primary-color,#41bdf5)",
     });
+
+    // Valgfri prikk for faktisk målt tilluft (samme X som ute-markøren).
+    this._supplyDot = this._mk(svg, "circle", {
+      r: "7",
+      fill: "var(--success-color,#43a047)",
+      stroke: "var(--card-background-color,#fff)",
+      "stroke-width": "2",
+    });
+    this._supplyDot.style.display = "none";
 
     // Synlige prikker (litt større for å se/sikte bedre)
     this._circles = this._points.map(() =>
@@ -386,9 +409,19 @@ class VentiRegCard extends HTMLElement {
       this._spDot.setAttribute("cx", px);
       this._spDot.setAttribute("cy", this._yToPx(sp));
       this._spDot.style.display = "";
+
+      // Målt tilluft, hvis konfigurert — på samme vertikale ute-linje.
+      if (Number.isFinite(this._supply)) {
+        this._supplyDot.setAttribute("cx", px);
+        this._supplyDot.setAttribute("cy", this._yToPx(this._supply));
+        this._supplyDot.style.display = "";
+      } else {
+        this._supplyDot.style.display = "none";
+      }
     } else {
       this._marker.style.display = "none";
       this._spDot.style.display = "none";
+      this._supplyDot.style.display = "none";
     }
 
     // Tekstverdier
@@ -401,6 +434,12 @@ class VentiRegCard extends HTMLElement {
     this._setEl.textContent = Number.isFinite(this._setpoint)
       ? ` ${this._setpoint.toFixed(1)}°C`
       : " –";
+    if (Number.isFinite(this._supply)) {
+      this._supEl.textContent = ` ${this._supply.toFixed(1)}°C`;
+      this._supChip.style.display = "";
+    } else {
+      this._supChip.style.display = "none";
+    }
   }
 
   _clampX(x) {

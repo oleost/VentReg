@@ -11,6 +11,7 @@ PLATFORMS = [Platform.SWITCH, Platform.SENSOR]
 # Konfignøkler
 CONF_OUTDOOR_SENSOR = "outdoor_sensor"
 CONF_CLIMATE_ENTITY = "climate_entity"
+CONF_SUPPLY_SENSOR = "supply_sensor"  # valgfri: faktisk målt tilluft (kun for graf)
 CONF_CURVE_POINTS = "curve_points"
 CONF_UPDATE_INTERVAL = "update_interval"
 CONF_TOLERANCE = "tolerance"

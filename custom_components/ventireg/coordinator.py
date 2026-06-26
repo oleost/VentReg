@@ -20,6 +20,7 @@ from .const import (
     CONF_CURVE_POINTS,
     CONF_OUTDOOR_SENSOR,
     CONF_STEP,
+    CONF_SUPPLY_SENSOR,
     CONF_TOLERANCE,
     CONF_UPDATE_INTERVAL,
     DEFAULT_CURVE_POINTS,
@@ -67,6 +68,7 @@ class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._unsub_listener = None
         self._outdoor_entity: str | None = None
         self._climate_entity: str | None = None
+        self._supply_entity: str | None = None
 
         self._store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
         self.device_info = DeviceInfo(
@@ -97,6 +99,7 @@ class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.update_interval != new_interval
             or self._outdoor_entity != cfg.get(CONF_OUTDOOR_SENSOR)
             or self._climate_entity != cfg.get(CONF_CLIMATE_ENTITY)
+            or self._supply_entity != cfg.get(CONF_SUPPLY_SENSOR)
         )
 
     # ------------------------------------------------------------ livssyklus
@@ -144,9 +147,14 @@ class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         cfg = self._config()
         self._outdoor_entity = cfg[CONF_OUTDOOR_SENSOR]
         self._climate_entity = cfg[CONF_CLIMATE_ENTITY]
+        self._supply_entity = cfg.get(CONF_SUPPLY_SENSOR) or None
+        entities = [self._outdoor_entity, self._climate_entity]
+        if self._supply_entity:
+            # Følg også målt tilluft, så grafens måle-punkt holdes oppdatert live.
+            entities.append(self._supply_entity)
         self._unsub_listener = async_track_state_change_event(
             self.hass,
-            [self._outdoor_entity, self._climate_entity],
+            entities,
             self._async_source_changed,
         )
 
@@ -191,9 +199,12 @@ class VentiRegCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return self.data or {"outdoor": None, "target": None, "status": self.status}
 
         target = round_to_step(interpolate(points, outdoor), step)
+        supply_entity = cfg.get(CONF_SUPPLY_SENSOR)
+        supply = self._read_float(supply_entity) if supply_entity else None
         result = {
             "outdoor": outdoor,
             "target": target,
+            "supply": supply,
             "status": self.status,
             "curve_points": [list(point) for point in points],
         }
